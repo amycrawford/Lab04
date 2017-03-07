@@ -1,0 +1,43 @@
+---
+title: 'Lab #4'
+author: "Amy Crawford"
+date: "March 7, 2017"
+output: pdf_document
+---
+
+```{r}
+library(rvest)
+url <- "http://www.baseball-reference.com/players/a/aardsda01.shtml"
+html <- read_html(url)
+position_raw <- html %>% html_nodes("#meta p:nth-child(2)") %>% html_text()
+position <- gsub("\\s", "", strsplit(x = position_raw, split = "\n")[[1]][3])
+position
+
+summary_raw <- html %>% html_nodes(".p2 .poptip , .p2 p, .p1 .poptip, .p1 p") %>% html_text()
+summary <- data.frame(names = c("POSITION", summary_raw[c(1,3,5,7,9,11,13)]), values = c(position, summary_raw[seq(from = 2, to= 14, by = 2)]))
+summary
+
+
+
+
+
+### In a function
+
+baseball <- function(url){
+  html <- read_html(url)
+  
+  position_raw <- html %>% html_nodes("#meta p:nth-child(2)") %>% html_text()
+  position <- gsub("\\s", "", strsplit(x = position_raw, split = "\n")[[1]][3])
+  
+  summary_raw <- html %>% html_nodes(".p2 .poptip , .p2 p, .p1 .poptip, .p1 p") %>% html_text()
+  summary <- data.frame(names = c("POSITION", summary_raw[c(1,3,5,7,9,11,13)]), values = c(position, summary_raw[seq(from = 2, to= 14, by = 2)]))
+  
+  return(summary)
+}
+
+player1 <- baseball("http://www.baseball-reference.com/players/a/aardsda01.shtml")
+player2 <- baseball("http://www.baseball-reference.com/players/m/mussimi01.shtml")
+player3 <- baseball("http://www.baseball-reference.com/players/c/caldwra02.shtml")
+player3
+
+```
