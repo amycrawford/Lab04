@@ -42,7 +42,7 @@ baseball <- function(url){
 }
 ```
 
-## Apply the baseball function:
+## Apply the 'baseball' function:
 ```{r, message = FALSE, warning = FALSE}
 ## Set the url and read html for players who have last names starting with "J"
 url <- "http://www.baseball-reference.com/players/j/"
