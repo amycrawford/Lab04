@@ -1,43 +1,92 @@
 ---
 title: 'Lab #4'
 author: "Amy Crawford"
-date: "March 7, 2017"
+date: "March 20, 2017"
 output: pdf_document
 ---
 
-```{r}
+## Load required libraries:
+```{r, message = FALSE, warning = FALSE}
 library(rvest)
-url <- "http://www.baseball-reference.com/players/a/aardsda01.shtml"
-html <- read_html(url)
-position_raw <- html %>% html_nodes("#meta p:nth-child(2)") %>% html_text()
-position <- gsub("\\s", "", strsplit(x = position_raw, split = "\n")[[1]][3])
-position
-
-summary_raw <- html %>% html_nodes(".p2 .poptip , .p2 p, .p1 .poptip, .p1 p") %>% html_text()
-summary <- data.frame(names = c("POSITION", summary_raw[c(1,3,5,7,9,11,13)]), values = c(position, summary_raw[seq(from = 2, to= 14, by = 2)]))
-summary
+library(ggplot2)
+library(purrr)
+library(tidyr)
+library(dplyr)
+library(rvest)
+```
 
 
-
-
-
-### In a function
-
+## Build the 'baseball' function: 
+```{r, message = FALSE, warning = FALSE}
+# Given a URL, the function "baseball" scrapes career statistics for baseball players from the web.
 baseball <- function(url){
-  html <- read_html(url)
+  # read the web url
+  html <- read_html(url) 
   
+  # get the player position. The variable 'position_raw' is an icky string, we parse it to get 'position' which is the information we are interested in.
   position_raw <- html %>% html_nodes("#meta p:nth-child(2)") %>% html_text()
   position <- gsub("\\s", "", strsplit(x = position_raw, split = "\n")[[1]][3])
   
-  summary_raw <- html %>% html_nodes(".p2 .poptip , .p2 p, .p1 .poptip, .p1 p") %>% html_text()
-  summary <- data.frame(names = c("POSITION", summary_raw[c(1,3,5,7,9,11,13)]), values = c(position, summary_raw[seq(from = 2, to= 14, by = 2)]))
+  # create a data frame and add 'position'. We will be adding the summary statistics to this structure in the next steps.
+  df <- data.frame(position)
+  
+  # get the career statistics table. The 'summary_raw' is a vector of string values that aren't in the order we would like to see them. 
+  # 'summary' has the correct structure of the table, turns numbers from "character" class to "numeric" class, and column binds the summary data with the player's position.
+  summary_raw <- html %>% html_nodes(".p3 .poptip , .p2 .poptip, .p3 p:nth-child(2), .p2 p:nth-child(2), .p1 p:nth-child(2), .p1 .poptip") %>% html_text()
+  summary <- cbind(df, t(as.numeric(c(summary_raw[seq(from = 2, to= length(summary_raw), by = 2)]))))
+  
+  # put on column names
+  names(summary) <- c("Position", summary_raw[seq(from = 1, to = length(summary_raw) - 1, by = 2)])
   
   return(summary)
 }
+```
 
-player1 <- baseball("http://www.baseball-reference.com/players/a/aardsda01.shtml")
-player2 <- baseball("http://www.baseball-reference.com/players/m/mussimi01.shtml")
-player3 <- baseball("http://www.baseball-reference.com/players/c/caldwra02.shtml")
-player3
+## Apply the baseball function:
+```{r, message = FALSE, warning = FALSE}
+## Set the url and read html for players who have last names starting with "J"
+url <- "http://www.baseball-reference.com/players/j/"
+html <- read_html(url)
 
+# Gather the player names
+player_names <- html %>% html_nodes("b a") %>% html_text()
+
+# Get the full url addresses for the players websites
+# 'player_url_extension' is the very last portion of the player's web address, it includes /players/j/...
+# 'player_url' is the full web address to the player's websites.
+player_url_extension <- html %>% html_nodes("b a") %>% html_attr(name="href")
+player_url <- paste("http://www.baseball-reference.com", player_url_extension, sep = "")
+
+# run the 'baseball' function on 10 player websites to scrape position and career statistic data. Column bind the player name to the career data and use nest.
+player1 <- cbind(Name = player_names[1], baseball(player_url[1])) %>% nest(-Name, -Position)
+player2 <- cbind(Name = player_names[2], baseball(player_url[2])) %>% nest(-Name, -Position)
+player3 <- cbind(Name = player_names[3], baseball(player_url[3])) %>% nest(-Name, -Position)
+player4 <- cbind(Name = player_names[4], baseball(player_url[4])) %>% nest(-Name, -Position)
+player5 <- cbind(Name = player_names[5], baseball(player_url[5])) %>% nest(-Name, -Position)
+player6 <- cbind(Name = player_names[6], baseball(player_url[6])) %>% nest(-Name, -Position)
+player7 <- cbind(Name = player_names[7], baseball(player_url[7])) %>% nest(-Name, -Position)
+player8 <- cbind(Name = player_names[8], baseball(player_url[8])) %>% nest(-Name, -Position)
+player9 <- cbind(Name = player_names[9], baseball(player_url[9])) %>% nest(-Name, -Position)
+player10 <- cbind(Name = player_names[10], baseball(player_url[10])) %>% nest(-Name, -Position)
+
+# Take a look at how one of the players individual data sets is structured
+player1
+```
+
+## Format the player data:
+```{r, message = FALSE, warning = FALSE}
+# row bind all 10 of the player data sets to get one data frame.
+output <- rbind(player1, player2, player3, player4, player5, player6, player7, player8, player9, player10)
+
+# unnest the data to expand the 'tibble' elements. Then, create a new variable called 'Position_flag' which will tell us whether the player is a pitcher or not.
+output <- output %>% select(Name, Position, data) %>% unnest() %>% mutate(Position_flag = ifelse(Position %in% "Pitcher", "Pitcher", "Not Pitcher"))
+
+# Take a look at the final, formatted data frame
+output
+```
+
+## Create a visualization of the data:
+```{r, message = FALSE, warning = FALSE}
+# create a plot of the WAR value
+ggplot(data = output, aes(fill = Position_flag)) + geom_boxplot(aes(x = Position_flag, y = WAR)) + xlab("Player Position")
 ```
